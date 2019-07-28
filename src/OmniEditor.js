@@ -4,7 +4,7 @@ import * as PropTypes from 'prop-types';
 import './OmniEditor.css';
 import OmniEditorKeyCommandMap from './OmniEditorKeyCommandMap';
 
-function OmniEditor(props) {
+const OmniEditor = (props) => {
     const editor = React.useRef(null);
     const [plugins, setPlugins] = React.useState(props.plugins);
 
@@ -109,7 +109,7 @@ function OmniEditor(props) {
             />
         </div>
     );
-}
+};
 
 OmniEditor.propTypes = {
     // EditorState + handler
