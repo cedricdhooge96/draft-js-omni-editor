@@ -1,6 +1,8 @@
-dist
-node_modules
+/dist
+/node_modules
 
-.editorconfig
-package-lock.json
-yarn.lock
+/.editorconfig
+/package-lock.json
+/yarn.lock
+
+/.idea
