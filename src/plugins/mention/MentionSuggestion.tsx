@@ -1,14 +1,20 @@
-import React from 'react';
-import * as PropTypes from 'prop-types';
+import React, { FunctionComponent, ReactNode, MouseEvent } from 'react';
+import { Suggestion } from 'plugins/mention/MentionPlugin';
 
-const MentionSuggestion = (props) => {
+interface MentionSuggestionProps {
+    suggestion: Suggestion;
+    onSuggestion: (suggestion: Suggestion) => void;
+    suggestionView: (suggestions: Suggestion) => ReactNode;
+}
+
+const MentionSuggestion: FunctionComponent<MentionSuggestionProps> = (props) => {
     let suggestionClassName = [];
 
     if (props.suggestion.active) {
         suggestionClassName.push('active')
     }
 
-    const onMouseDown = (event) => {
+    const onMouseDown = (event: MouseEvent<HTMLLIElement>) => {
         event.preventDefault();
     };
 
@@ -21,12 +27,6 @@ const MentionSuggestion = (props) => {
             {props.suggestionView(props.suggestion)}
         </li>
     );
-};
-
-MentionSuggestion.propTypes = {
-    suggestion: PropTypes.object.isRequired,
-    suggestionView: PropTypes.func.isRequired,
-    onSuggestion: PropTypes.func.isRequired,
 };
 
 export default MentionSuggestion;

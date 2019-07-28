@@ -9,7 +9,11 @@ export const Commands = {
     SPLIT_BLOCK: 'split-block',
 };
 
-const OmniEditorKeyCommandMap = {};
+export interface KeyCommandMap {
+    [key: number]: string
+}
+
+const OmniEditorKeyCommandMap: KeyCommandMap = {};
 OmniEditorKeyCommandMap[KeyCodes.ARROW_UP] = Commands.ARROW_UP;
 OmniEditorKeyCommandMap[KeyCodes.ARROW_DOWN] = Commands.ARROW_DOWN;
 

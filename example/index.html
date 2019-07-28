@@ -1,0 +1,93 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Playground</title>
+</head>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body, #root {
+        width: 100%;
+        height: 100%;
+        font-size: 100%;
+    }
+
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+        sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    code {
+        font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+        monospace;
+    }
+
+    .App {
+        background-color: #343d46;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .MentionSuggestionsDropdown {
+        position: absolute;
+        max-height: 150px;
+        overflow-y: scroll;
+        border: 1px solid #eee;
+        min-width: 220px;
+        max-width: 440px;
+        background: #fff;
+        border-radius: 2px;
+        cursor: pointer;
+        z-index: 1;
+        display: -webkit-box;
+        display: flex;
+        -webkit-box-orient: vertical;
+        -webkit-box-direction: normal;
+        flex-direction: column;
+        box-sizing: border-box;
+        margin: 10px 0 0 0;
+        padding: 0;
+    }
+
+    .MentionSuggestionsDropdown li {
+        list-style-type: none;
+        padding: 8px 4px 8px 4px;
+    }
+
+    .MentionSuggestionsDropdown li.active,
+    .MentionSuggestionsDropdown li:hover {
+        background-color: #cce7ff;
+        transition: background-color .4s cubic-bezier(0.27,1.27,0.48,0.56);
+        color: #00b4d0;
+    }
+
+    .OmniEditor {
+        width: 600px;
+        border-radius: 4px;
+        min-height: 30px;
+        padding: 10px;
+        background: #2b303b;
+        color: #85939f;
+        font-size: 20px;
+    }
+</style>
+
+<body>
+  <div id="root"></div>
+  <script src="./index.tsx"></script>
+</body>
+
+</html>

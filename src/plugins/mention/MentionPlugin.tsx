@@ -1,18 +1,37 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import MentionSuggestionsDropdown from './MentionSuggestionsDropdown';
-import { EditorState, Modifier } from 'draft-js';
+import { EditorChangeType, EditorState, Modifier } from 'draft-js';
 import { Commands } from '../../OmniEditorKeyCommandMap';
+import EditorPlugin from '../EditorPlugin';
 
-class MentionPlugin {
-    trigger;
-    suggestions;
-    suggestionView;
-    suggestionFilter;
+export interface MentionPluginState {
+    indexOfSelectedSuggestion: number;
+    position: {
+        left: number;
+        top: number;
+    }
+}
+
+export interface Suggestion {
+    name: string;
+    active?: boolean;
+}
+
+class MentionPlugin implements EditorPlugin {
+    private readonly trigger: string;
+    private readonly suggestions: Suggestion[];
+    private readonly suggestionView: (suggestions: Suggestion) => ReactNode;
+    private readonly suggestionFilter: Function;
 
     // Our mention plugin's state
-    state;
+    private state: MentionPluginState | null;
 
-    constructor(trigger, suggestions, suggestionView, suggestionFilter) {
+    constructor(
+        trigger: string,
+        suggestions: Suggestion[],
+        suggestionView: (suggestions: Suggestion) => ReactNode,
+        suggestionFilter: Function
+    ) {
         this.trigger = trigger;
         this.suggestions = suggestions;
         this.suggestionView = suggestionView;
@@ -21,7 +40,7 @@ class MentionPlugin {
         this.state = null;
     }
 
-    hasEntityAtSelection = (editorState) => {
+    hasEntityAtSelection = (editorState: EditorState): boolean => {
         const selection = editorState.getSelection();
         if (!selection.getHasFocus()) {
             return false;
@@ -33,8 +52,12 @@ class MentionPlugin {
         return !!block.getEntityAt(selection.getAnchorOffset() - 1);
     };
 
-    getTriggerRange = (editorState) => {
+    getTriggerRange = (editorState: EditorState) => {
         const selection = window.getSelection();
+
+        if (!selection) {
+            return null;
+        }
 
         if (selection.rangeCount === 0) {
             return null;
@@ -47,6 +70,10 @@ class MentionPlugin {
         const range = selection.getRangeAt(0);
         let text = range.startContainer.textContent;
 
+        if (!text) {
+            return null;
+        }
+
         // Remove text that appears after the cursor..
         text = text.substring(0, range.startOffset);
 
@@ -58,19 +85,20 @@ class MentionPlugin {
         text = text.substring(index).substring(1, text.length).toLowerCase();
 
         return {
+            selection,
             text,
             start: index,
             end: range.startOffset
         };
     };
 
-    getSuggestionState = (editorState) => {
+    getSuggestionState = (editorState: EditorState) => {
         const range = this.getTriggerRange(editorState);
         if (!range) {
             return null;
         }
 
-        const tempRange = window.getSelection().getRangeAt(0).cloneRange();
+        const tempRange = range.selection.getRangeAt(0).cloneRange();
         tempRange.setStart(tempRange.startContainer, range.start);
 
         const rangeRect = tempRange.getBoundingClientRect();
@@ -86,7 +114,7 @@ class MentionPlugin {
         };
     };
 
-    onChange = (editorState) => {
+    onChange = (editorState: EditorState): EditorPlugin => {
         this.state = this.getSuggestionState(editorState);
 
         return this;
@@ -100,7 +128,7 @@ class MentionPlugin {
         return true;
     };
 
-    handleKeyCommand = (command, editorState) => {
+    handleKeyCommand = (command: string, editorState: EditorState): { didPluginHandleCommand: boolean, updatedPlugin: EditorPlugin, updatedEditorState?: EditorState } => {
         if (this.state === null) {
             return {
                 didPluginHandleCommand: false,
@@ -152,7 +180,13 @@ class MentionPlugin {
         };
     };
 
-    addMentionToEditorState = (editorState, suggestedMention) => {
+    addMentionToEditorState = (editorState: EditorState, suggestedMention: any) => {
+        console.log(suggestedMention);
+
+        if (!suggestedMention) {
+            return editorState;
+        }
+
         // Get current selection from the editor state.
         const selection = editorState.getSelection();
 
@@ -170,7 +204,7 @@ class MentionPlugin {
 
         // Create our entity key and modify the selection to contain the mention text.
         const entityKey = currentContent.getLastCreatedEntityKey();
-        const mentionTextSelection = selection.merge(
+        const mentionTextSelection: any = selection.merge(
             {
                 anchorOffset: anchorOffsetOfMention,
                 focusOffset: focusOffsetOfMention
@@ -182,7 +216,7 @@ class MentionPlugin {
             currentContent,
             mentionTextSelection,
             `@${suggestedMention.name}`,
-            null,
+            undefined,
             entityKey
         );
 
@@ -202,13 +236,13 @@ class MentionPlugin {
             EditorState.push(
                 editorState,
                 contentStateWithMentionEntity,
-                'insert-mention'
+                'insert-mention' as EditorChangeType
             ),
             contentStateWithMentionEntity.getSelectionAfter()
         );
     };
 
-    getPortalElement = (editorState, setEditorState) => {
+    getPortalElement = (editorState: EditorState, setEditorState: (editorState: EditorState) => void) => {
         if (this.state === null) {
             return null;
         }
@@ -219,13 +253,17 @@ class MentionPlugin {
             }
         ).map(
             (suggestion, index) => {
+                if (this.state === null) {
+                    return suggestion;
+                }
+
                 suggestion.active = this.state.indexOfSelectedSuggestion === index;
 
                 return suggestion;
             }
         );
 
-        const onSuggestion = (suggestion) => {
+        const onSuggestion = (suggestion: Suggestion) => {
             setEditorState(this.addMentionToEditorState(editorState, suggestion));
 
             this.state = null;

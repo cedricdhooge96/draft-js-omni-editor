@@ -1,10 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, FunctionComponent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import * as PropTypes from 'prop-types';
-import './MentionSuggestionsDropdown.css';
 import MentionSuggestion from './MentionSuggestion';
+import { Suggestion } from 'plugins/mention/MentionPlugin';
 
-const MentionSuggestionsDropdown = (props) => {
+interface MentionSuggestionsDropdownProps {
+    position: {
+        left: number;
+        top: number;
+    },
+    suggestions: Suggestion[];
+    suggestionView: (suggestions: Suggestion) => ReactNode;
+    onSuggestion: (suggestion: Suggestion) => void;
+}
+
+const MentionSuggestionsDropdown: FunctionComponent<MentionSuggestionsDropdownProps> = (props) => {
     const element = React.useRef(document.createElement('div'));
 
     useEffect(

@@ -1,4 +1,8 @@
+/node_modules
+/.cache
+/dist
+/.rts2_cache_cjs
+/.rts2_cache_esm
 /src
-/demo
-/.babelrc
-/webpack.config.js
+/test
+/.editorconfig
