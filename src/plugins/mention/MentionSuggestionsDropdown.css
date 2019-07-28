@@ -1,0 +1,32 @@
+.MentionSuggestionsDropdown {
+    position: absolute;
+    max-height: 150px;
+    overflow-y: scroll;
+    border: 1px solid #eee;
+    min-width: 220px;
+    max-width: 440px;
+    background: #fff;
+    border-radius: 2px;
+    cursor: pointer;
+    z-index: 1;
+    display: -webkit-box;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    flex-direction: column;
+    box-sizing: border-box;
+    margin: 10px 0 0 0;
+    padding: 0;
+}
+
+.MentionSuggestionsDropdown li {
+    list-style-type: none;
+    padding: 8px 4px 8px 4px;
+}
+
+.MentionSuggestionsDropdown li.active,
+.MentionSuggestionsDropdown li:hover {
+    background-color: #cce7ff;
+    transition: background-color .4s cubic-bezier(0.27,1.27,0.48,0.56);
+    color: #00b4d0;
+}

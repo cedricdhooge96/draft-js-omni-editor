@@ -1,0 +1,9 @@
+.OmniEditor {
+    width: 600px;
+    border-radius: 4px;
+    min-height: 30px;
+    padding: 10px;
+    background: #2b303b;
+    color: #85939f;
+    font-size: 20px;
+}
