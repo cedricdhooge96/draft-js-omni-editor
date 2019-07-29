@@ -10,7 +10,7 @@ A list of all the plugins created for the Omni Editor
 
 A plugin created to mention certain users using a dropdown with render customizations.
 
-```
+```js
     const suggestions = [
         { name: 'Foo' },
         { name: 'Bar' },
