@@ -3,14 +3,7 @@ import MentionSuggestionsDropdown from './MentionSuggestionsDropdown';
 import { EditorChangeType, EditorState, Modifier } from 'draft-js';
 import { Commands } from '../../OmniEditorKeyCommandMap';
 import EditorPlugin from '../EditorPlugin';
-
-export interface MentionPluginState {
-    indexOfSelectedSuggestion: number;
-    position: {
-        left: number;
-        top: number;
-    }
-}
+import { hasEntityAtSelection } from '../Helpers';
 
 export interface Suggestion {
     name: string;
@@ -18,39 +11,34 @@ export interface Suggestion {
 }
 
 class MentionPlugin implements EditorPlugin {
-    private readonly trigger: string;
-    private readonly suggestions: Suggestion[];
-    private readonly suggestionView: (suggestions: Suggestion) => ReactNode;
-    private readonly suggestionFilter: Function;
 
-    // Our mention plugin's state
-    private state: MentionPluginState | null;
+    // Configuration properties provided by props
+    private readonly trigger: string;
+    private readonly suggestionView: (suggestions: Suggestion) => ReactNode;
+    private readonly suggestionFilter: (suggestion: Suggestion, text: string) => boolean;
+
+    // State Properties set by the plugin
+    private text: string | undefined;
+    private indexOfSelectedSuggestion: number | undefined;
+    private position: { left: number, top: number} | undefined;
+    private suggestions: Suggestion[] | undefined;
 
     constructor(
         trigger: string,
-        suggestions: Suggestion[],
+        loadSuggestions: Promise<Suggestion[]>,
         suggestionView: (suggestions: Suggestion) => ReactNode,
-        suggestionFilter: Function
+        suggestionFilter: (suggestion: Suggestion, text: string) => boolean
     ) {
         this.trigger = trigger;
-        this.suggestions = suggestions;
         this.suggestionView = suggestionView;
         this.suggestionFilter = suggestionFilter;
 
-        this.state = null;
+        loadSuggestions.then(
+            (suggestions: Suggestion[]) => {
+                this.suggestions =  suggestions
+            }
+        );
     }
-
-    hasEntityAtSelection = (editorState: EditorState): boolean => {
-        const selection = editorState.getSelection();
-        if (!selection.getHasFocus()) {
-            return false;
-        }
-
-        const contentState = editorState.getCurrentContent();
-        const block = contentState.getBlockForKey(selection.getAnchorKey());
-
-        return !!block.getEntityAt(selection.getAnchorOffset() - 1);
-    };
 
     getTriggerRange = (editorState: EditorState) => {
         const selection = window.getSelection();
@@ -63,7 +51,7 @@ class MentionPlugin implements EditorPlugin {
             return null;
         }
 
-        if (this.hasEntityAtSelection(editorState)) {
+        if (hasEntityAtSelection(editorState)) {
             return null;
         }
 
@@ -92,10 +80,14 @@ class MentionPlugin implements EditorPlugin {
         };
     };
 
-    getSuggestionState = (editorState: EditorState) => {
+    public onChange = (editorState: EditorState): EditorPlugin => {
         const range = this.getTriggerRange(editorState);
         if (!range) {
-            return null;
+            this.text = undefined;
+            this.indexOfSelectedSuggestion = undefined;
+            this.position = undefined;
+
+            return this;
         }
 
         const tempRange = range.selection.getRangeAt(0).cloneRange();
@@ -104,32 +96,48 @@ class MentionPlugin implements EditorPlugin {
         const rangeRect = tempRange.getBoundingClientRect();
         let [left, top] = [rangeRect.left, rangeRect.bottom];
 
-        return {
-            text: range.text,
-            position: {
-                left: left,
-                top: top,
-            },
-            indexOfSelectedSuggestion: 0,
+        this.text = range.text;
+        this.indexOfSelectedSuggestion = 0;
+        this.position = {
+            left: left,
+            top: top,
         };
-    };
-
-    onChange = (editorState: EditorState): EditorPlugin => {
-        this.state = this.getSuggestionState(editorState);
 
         return this;
     };
 
-    shouldTriggerCustomKeyCommand = () => {
-        if (this.state === null) {
+    public shouldTriggerCustomKeyCommand = () => {
+        if (
+            this.text === null
+            || this.suggestions === undefined
+            || this.suggestions.length <= 0
+        ) {
+            return false;
+        }
+
+        const filteredSuggestions = this.suggestions.filter(
+            (suggestion) => {
+                if (this.text === undefined) {
+                    return true;
+                }
+
+                return this.suggestionFilter(suggestion, this.text);
+            }
+        );
+
+        if (filteredSuggestions.length <= 0) {
             return false;
         }
 
         return true;
     };
 
-    handleKeyCommand = (command: string, editorState: EditorState): { didPluginHandleCommand: boolean, updatedPlugin: EditorPlugin, updatedEditorState?: EditorState } => {
-        if (this.state === null) {
+    public handleKeyCommand = (command: string, editorState: EditorState): { didPluginHandleCommand: boolean, updatedPlugin: EditorPlugin, updatedEditorState?: EditorState } => {
+        if (
+            this.text === undefined
+            || this.suggestions === undefined
+            || this.suggestions.length <= 0
+        ) {
             return {
                 didPluginHandleCommand: false,
                 updatedPlugin: this,
@@ -138,29 +146,46 @@ class MentionPlugin implements EditorPlugin {
 
         const filteredSuggestions = this.suggestions.filter(
             (suggestion) => {
-                return this.suggestionFilter(suggestion, this.state);
+                if (this.text === undefined) {
+                    return true;
+                }
+
+                return this.suggestionFilter(suggestion, this.text);
             }
         );
 
+        if (filteredSuggestions.length <= 0) {
+            return {
+                didPluginHandleCommand: false,
+                updatedPlugin: this,
+            };
+        }
+
+        if (!this.indexOfSelectedSuggestion) {
+            this.indexOfSelectedSuggestion = 0;
+        }
+
         if (command === Commands.ARROW_DOWN) {
-            if (this.state.indexOfSelectedSuggestion === filteredSuggestions.length - 1) {
-                this.state.indexOfSelectedSuggestion = 0;
+            if (this.indexOfSelectedSuggestion === filteredSuggestions.length - 1) {
+                this.indexOfSelectedSuggestion = 0;
             } else {
-                this.state.indexOfSelectedSuggestion++;
+                this.indexOfSelectedSuggestion++;
             }
         } else if (command === Commands.ARROW_UP) {
-            if (this.state.indexOfSelectedSuggestion === 0) {
-                this.state.indexOfSelectedSuggestion = filteredSuggestions.length - 1;
+            if (this.indexOfSelectedSuggestion === 0) {
+                this.indexOfSelectedSuggestion = filteredSuggestions.length - 1;
             } else {
-                this.state.indexOfSelectedSuggestion--;
+                this.indexOfSelectedSuggestion--;
             }
         } else if (command === Commands.SPLIT_BLOCK) {
             const updatedEditorState = this.addMentionToEditorState(
                 editorState,
-                filteredSuggestions[this.state.indexOfSelectedSuggestion]
+                filteredSuggestions[this.indexOfSelectedSuggestion]
             );
 
-            this.state = null;
+            this.text = undefined;
+            this.position = undefined;
+            this.indexOfSelectedSuggestion = undefined;
 
             return {
                 didPluginHandleCommand: true,
@@ -180,9 +205,7 @@ class MentionPlugin implements EditorPlugin {
         };
     };
 
-    addMentionToEditorState = (editorState: EditorState, suggestedMention: any) => {
-        console.log(suggestedMention);
-
+    private addMentionToEditorState = (editorState: EditorState, suggestedMention: any) => {
         if (!suggestedMention) {
             return editorState;
         }
@@ -242,31 +265,46 @@ class MentionPlugin implements EditorPlugin {
         );
     };
 
-    getPortalElement = (editorState: EditorState, setEditorState: (editorState: EditorState) => void) => {
-        if (this.state === null) {
+    public getPortalElement = (editorState: EditorState, setEditorState: (editorState: EditorState) => void) => {
+        if (
+            this.text === undefined
+            || this.position === undefined
+            || this.suggestions === undefined
+            || this.suggestions.length <= 0
+        ) {
             return null;
         }
 
         const filteredSuggestions = this.suggestions.filter(
             (suggestion) => {
-                return this.suggestionFilter(suggestion, this.state);
+                if (this.text === undefined) {
+                    return true;
+                }
+
+                return this.suggestionFilter(suggestion, this.text);
             }
         ).map(
             (suggestion, index) => {
-                if (this.state === null) {
+                if (this.indexOfSelectedSuggestion === null) {
                     return suggestion;
                 }
 
-                suggestion.active = this.state.indexOfSelectedSuggestion === index;
+                suggestion.active = this.indexOfSelectedSuggestion === index;
 
                 return suggestion;
             }
         );
 
+        if (filteredSuggestions.length <= 0) {
+            return null;
+        }
+
         const onSuggestion = (suggestion: Suggestion) => {
             setEditorState(this.addMentionToEditorState(editorState, suggestion));
 
-            this.state = null;
+            this.text = undefined;
+            this.position = undefined;
+            this.indexOfSelectedSuggestion = undefined;
         };
 
         return (
@@ -274,7 +312,7 @@ class MentionPlugin implements EditorPlugin {
                 key="mention-suggestions"
                 suggestionView={this.suggestionView}
                 suggestions={filteredSuggestions}
-                position={this.state.position}
+                position={this.position}
                 onSuggestion={onSuggestion}
             />
         );
